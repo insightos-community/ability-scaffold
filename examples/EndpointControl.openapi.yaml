@@ -1,0 +1,389 @@
+openapi: 3.0.3
+
+info:
+  title: EndpointControl.Robotics
+  version: 1.0.0
+  description: |
+    机器人末端运动控制能力。
+    控制机械臂末端执行器的位姿移动、轨迹跟踪、夹爪操作。
+    支持笛卡尔空间和关节空间的运动规划。
+
+x-insightos:
+  packageName: robotics.endpoint.control
+  kind: AtomAbility
+  metadata:
+    labels:
+      app.insightos.io/action: Endpoint
+      app.insightos.io/robot: universal.ur5e
+      app.insightos.io/end-effector: Gripper.Servo
+    annotations:
+      description: 机械臂末端运动控制，支持位姿移动、轨迹跟踪、夹爪开合
+
+x-ability-config:
+  type: object
+  description: 末端控制能力配置
+  properties:
+    robotUri:
+      type: string
+      description: 机器人控制服务地址
+      example: http://192.0.2.100:30004
+    armName:
+      type: string
+      description: 控制的机械臂名称
+      example: left_arm
+    maxLinearVelocity:
+      type: number
+      description: 末端最大线速度 (m/s)
+      default: 0.5
+      example: 0.5
+    maxAngularVelocity:
+      type: number
+      description: 末端最大角速度 (rad/s)
+      default: 1.0
+      example: 1.0
+    collisionCheckEnabled:
+      type: boolean
+      description: 是否启用碰撞检测
+      default: true
+      example: true
+    planningFrame:
+      type: string
+      description: 规划参考坐标系
+      default: base_link
+      example: base_link
+  required:
+    - robotUri
+    - armName
+
+x-debug-option:
+  type: object
+  description: 调试选项
+  properties:
+    logTrajectory:
+      type: boolean
+      description: 记录运动轨迹到本地文件
+      default: false
+    visualizeInRviz:
+      type: boolean
+      description: 在 RViz 中可视化规划路径
+      default: false
+
+x-tasks:
+  - taskType: 0
+    taskName: MoveToPose
+    summary: 移动末端到目标位姿
+    params:
+      - name: position
+        type: Point3d
+        optional: false
+        description: 目标位置 (x, y, z)，单位米
+      - name: orientation
+        type: Quaternion
+        optional: false
+        description: 目标姿态四元数 (x, y, z, w)
+      - name: velocity_scale
+        type: number
+        optional: true
+        description: 速度缩放因子 (0.0~1.0)，默认 0.3
+      - name: acceleration_scale
+        type: number
+        optional: true
+        description: 加速度缩放因子 (0.0~1.0)，默认 0.3
+    returns:
+      - name: success
+        type: boolean
+        description: 是否到达目标位姿
+      - name: final_position
+        type: Point3d
+        description: 实际到达的位置
+      - name: error_distance
+        type: number
+        description: 与目标位置的误差距离 (米)
+
+  - taskType: 1
+    taskName: MoveAlongTrajectory
+    summary: 沿笛卡尔轨迹移动末端
+    params:
+      - name: waypoints
+        type: array
+        optional: false
+        description: 路径点列表，每个元素包含 position 和 orientation
+      - name: velocity_scale
+        type: number
+        optional: true
+        description: 速度缩放因子，默认 0.2
+      - name: blend_radius
+        type: number
+        optional: true
+        description: 路径点间的混合半径 (米)，默认 0.01
+    returns:
+      - name: success
+        type: boolean
+        description: 是否完成轨迹跟踪
+      - name: completed_waypoints
+        type: integer
+        description: 已完成的路径点数量
+      - name: total_waypoints
+        type: integer
+        description: 总路径点数量
+
+  - taskType: 2
+    taskName: MoveJoints
+    summary: 关节空间运动到目标关节角度
+    params:
+      - name: joint_positions
+        type: array
+        optional: false
+        description: 目标关节角度列表 (弧度)
+      - name: velocity_scale
+        type: number
+        optional: true
+        description: 速度缩放因子，默认 0.3
+    returns:
+      - name: success
+        type: boolean
+        description: 是否到达目标关节角度
+      - name: final_joints
+        type: array
+        description: 实际到达的关节角度
+
+  - taskType: 3
+    taskName: SetGripper
+    summary: 控制夹爪开合
+    params:
+      - name: opening
+        type: number
+        optional: false
+        description: 夹爪开合度 (0.0=完全闭合, 1.0=完全张开)
+      - name: force
+        type: number
+        optional: true
+        description: 夹持力 (N)，默认 10.0
+      - name: speed
+        type: number
+        optional: true
+        description: 夹爪运动速度 (0.0~1.0)，默认 0.5
+    returns:
+      - name: success
+        type: boolean
+        description: 夹爪是否到达目标状态
+      - name: actual_opening
+        type: number
+        description: 夹爪实际开合度
+      - name: object_detected
+        type: boolean
+        description: 是否检测到物体被夹持
+
+  - taskType: 4
+    taskName: GetCurrentPose
+    summary: 获取末端当前位姿
+    params: []
+    returns:
+      - name: position
+        type: Point3d
+        description: 当前末端位置
+      - name: orientation
+        type: Quaternion
+        description: 当前末端姿态
+      - name: joint_positions
+        type: array
+        description: 当前各关节角度
+
+servers:
+  - url: http://localhost:8080
+    description: 本地开发环境
+    variables:
+      host:
+        default: localhost
+      port:
+        default: "8080"
+      ipcPort:
+        default: "51870"
+
+tags:
+  - name: motion
+    description: 运动控制接口
+  - name: gripper
+    description: 夹爪控制接口
+
+paths:
+  /api/task/start_task:
+    - method: post
+      operation:
+        tags: [motion]
+        summary: 移动末端到目标位姿
+        x-taskType: 0
+        x-taskName: MoveToPose
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task_type:
+                    type: integer
+                  payload:
+                    type: object
+                    properties:
+                      position:
+                        $ref: '#/components/schemas/Point3d'
+                      orientation:
+                        $ref: '#/components/schemas/Quaternion'
+                      velocity_scale:
+                        type: number
+                      acceleration_scale:
+                        type: number
+                example:
+                  task_type: 0
+                  payload:
+                    position: { x: 0.5, y: 0.0, z: 0.3 }
+                    orientation: { x: 0.0, y: 0.707, z: 0.0, w: 0.707 }
+                    velocity_scale: 0.3
+        responses:
+          '200':
+            description: 任务已启动
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/TaskResponse'
+
+    - method: post
+      operation:
+        tags: [motion]
+        summary: 沿轨迹移动
+        x-taskType: 1
+        x-taskName: MoveAlongTrajectory
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task_type:
+                    type: integer
+                  payload:
+                    type: object
+                example:
+                  task_type: 1
+                  payload:
+                    waypoints:
+                      - position: { x: 0.4, y: 0.0, z: 0.3 }
+                        orientation: { x: 0, y: 0.707, z: 0, w: 0.707 }
+                      - position: { x: 0.5, y: 0.1, z: 0.3 }
+                        orientation: { x: 0, y: 0.707, z: 0, w: 0.707 }
+                    velocity_scale: 0.2
+        responses:
+          '200':
+            description: 任务已启动
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/TaskResponse'
+
+    - method: post
+      operation:
+        tags: [motion]
+        summary: 关节空间运动
+        x-taskType: 2
+        x-taskName: MoveJoints
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  task_type: 2
+                  payload:
+                    joint_positions: [0.0, -1.57, 1.57, -1.57, -1.57, 0.0]
+                    velocity_scale: 0.3
+        responses:
+          '200':
+            description: 任务已启动
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/TaskResponse'
+
+    - method: post
+      operation:
+        tags: [gripper]
+        summary: 控制夹爪
+        x-taskType: 3
+        x-taskName: SetGripper
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  task_type: 3
+                  payload:
+                    opening: 0.5
+                    force: 10.0
+        responses:
+          '200':
+            description: 任务已启动
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/TaskResponse'
+
+    - method: post
+      operation:
+        tags: [motion]
+        summary: 获取当前位姿
+        x-taskType: 4
+        x-taskName: GetCurrentPose
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  task_type: 4
+                  payload: {}
+        responses:
+          '200':
+            description: 任务已启动
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/TaskResponse'
+
+components:
+  schemas:
+    Point3d:
+      type: object
+      properties:
+        x: { type: number, format: double }
+        y: { type: number, format: double }
+        z: { type: number, format: double }
+      required: [x, y, z]
+
+    Quaternion:
+      type: object
+      properties:
+        x: { type: number, format: double }
+        y: { type: number, format: double }
+        z: { type: number, format: double }
+        w: { type: number, format: double }
+      required: [x, y, z, w]
+
+    TaskResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+          format: uuid
+      required: [task_id]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string }
+        details: { type: object }

@@ -1,0 +1,131 @@
+kind: AtomAbility
+metadata:
+  name: endpointcontrol-robotics
+spec:
+  abilityName: EndpointControl.Robotics
+  config:
+    armName: left_arm
+    collisionCheckEnabled: true
+    maxAngularVelocity: 1.0
+    maxLinearVelocity: 0.5
+    planningFrame: base_link
+    robotUri: http://192.0.2.100:30004
+  package: robotics.endpoint.control
+  position: localhost
+  tasks:
+  - params:
+    - description: 目标位置 (x, y, z)，单位米
+      name: position
+      optional: false
+      type: Point3d
+    - description: 目标姿态四元数 (x, y, z, w)
+      name: orientation
+      optional: false
+      type: Quaternion
+    - description: 速度缩放因子 (0.0~1.0)，默认 0.3
+      name: velocity_scale
+      optional: true
+      type: number
+    - description: 加速度缩放因子 (0.0~1.0)，默认 0.3
+      name: acceleration_scale
+      optional: true
+      type: number
+    returns:
+    - description: 是否到达目标位姿
+      name: success
+      type: boolean
+    - description: 实际到达的位置
+      name: final_position
+      type: Point3d
+    - description: 与目标位置的误差距离 (米)
+      name: error_distance
+      type: number
+    summary: 移动末端到目标位姿
+    taskName: MoveToPose
+    taskType: 0
+  - params:
+    - description: 路径点列表，每个元素包含 position 和 orientation
+      name: waypoints
+      optional: false
+      type: array
+    - description: 速度缩放因子，默认 0.2
+      name: velocity_scale
+      optional: true
+      type: number
+    - description: 路径点间的混合半径 (米)，默认 0.01
+      name: blend_radius
+      optional: true
+      type: number
+    returns:
+    - description: 是否完成轨迹跟踪
+      name: success
+      type: boolean
+    - description: 已完成的路径点数量
+      name: completed_waypoints
+      type: integer
+    - description: 总路径点数量
+      name: total_waypoints
+      type: integer
+    summary: 沿笛卡尔轨迹移动末端
+    taskName: MoveAlongTrajectory
+    taskType: 1
+  - params:
+    - description: 目标关节角度列表 (弧度)
+      name: joint_positions
+      optional: false
+      type: array
+    - description: 速度缩放因子，默认 0.3
+      name: velocity_scale
+      optional: true
+      type: number
+    returns:
+    - description: 是否到达目标关节角度
+      name: success
+      type: boolean
+    - description: 实际到达的关节角度
+      name: final_joints
+      type: array
+    summary: 关节空间运动到目标关节角度
+    taskName: MoveJoints
+    taskType: 2
+  - params:
+    - description: 夹爪开合度 (0.0=完全闭合, 1.0=完全张开)
+      name: opening
+      optional: false
+      type: number
+    - description: 夹持力 (N)，默认 10.0
+      name: force
+      optional: true
+      type: number
+    - description: 夹爪运动速度 (0.0~1.0)，默认 0.5
+      name: speed
+      optional: true
+      type: number
+    returns:
+    - description: 夹爪是否到达目标状态
+      name: success
+      type: boolean
+    - description: 夹爪实际开合度
+      name: actual_opening
+      type: number
+    - description: 是否检测到物体被夹持
+      name: object_detected
+      type: boolean
+    summary: 控制夹爪开合
+    taskName: SetGripper
+    taskType: 3
+  - params: []
+    returns:
+    - description: 当前末端位置
+      name: position
+      type: Point3d
+    - description: 当前末端姿态
+      name: orientation
+      type: Quaternion
+    - description: 当前各关节角度
+      name: joint_positions
+      type: array
+    summary: 获取末端当前位姿
+    taskName: GetCurrentPose
+    taskType: 4
+  version: 1.0.0
