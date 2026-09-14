@@ -50,3 +50,20 @@ Copyright 2026 InsightOS。自有代码采用 [Apache-2.0](LICENSE)；第三方�
 ## 三个平台的构建复现
 
 参见 [glibc、musl 与 macOS 构建说明](README.build.md)：包含已锁定的源码版本、实际脚本入口、工具要求、本地与 CI 指令、产物位置和平台验证范围。
+
+## Windows 原生 Ability 入口
+
+在 x64 MSVC 开发者终端中构建，然后验证参数转发和子进程清理：
+
+```powershell
+cl /std:c++20 /EHsc /MT /O2 native/windows/ability.cpp /Fe:ability.exe /link shell32.lib
+python native/windows/test_launcher.py ability.exe
+$env:SEMANTIC_WINDOWS_ABILITY_LAUNCHER = (Resolve-Path ability.exe).Path
+```
+
+也可以下载 `Native Windows Ability launcher` 工作流验证后的
+`ability-launcher-windows-amd64` artifact。Windows 打包时会将入口复制到
+`bin/ability.exe`；安装器需设置 `SEMANTIC_ABILITY_PYTHON` 为包内 Python 的绝对路径。
+运行入口不依赖 Bash 或系统 Python，支持中文/空格路径和 JSON 参数。
+入口使用 Windows Job Object 管理自己的 Python 子进程；机器人安全停止判断仍由
+supervisor 和 Ability 生命周期协议负责。该入口测试通过不代表整套 Windows installer 已完成。

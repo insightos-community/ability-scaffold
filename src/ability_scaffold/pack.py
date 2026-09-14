@@ -36,6 +36,7 @@
 
 import argparse
 import os
+import shutil
 import platform
 import sys
 import zipfile
@@ -85,15 +86,24 @@ def validate_project(project_dir: Path) -> dict:
     version = pkg.get("version", "0.0.0")
     arch = pkg.get("arch", platform.machine())
 
-    # 如果没有 bin/ability，自动生成
-    if not bin_ability.exists():
-        os.makedirs(project_dir / "bin", exist_ok=True)
-        with open(bin_ability, "w") as f:
-            f.write('#!/bin/bash\n')
-            f.write('SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"\n')
-            f.write('exec python3 "$SCRIPT_DIR/main.py" "$@"\n')
-        os.chmod(bin_ability, 0o755)
-        print(f"  自动生成 bin/ability (使用系统 python3)")
+    if os.name == "nt":
+        native_entry = project_dir / "bin" / "ability.exe"
+        if not native_entry.exists():
+            source = Path(os.environ.get("SEMANTIC_WINDOWS_ABILITY_LAUNCHER", ""))
+            if not source.is_file():
+                return {"valid": False, "errors": ["Set SEMANTIC_WINDOWS_ABILITY_LAUNCHER to the verified native ability.exe"]}
+            native_entry.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, native_entry)
+    else:
+        # 如果没有 bin/ability，自动生成
+        if not bin_ability.exists():
+            os.makedirs(project_dir / "bin", exist_ok=True)
+            with open(bin_ability, "w") as f:
+                f.write('#!/bin/bash\n')
+                f.write('SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"\n')
+                f.write('exec python3 "$SCRIPT_DIR/main.py" "$@"\n')
+            os.chmod(bin_ability, 0o755)
+            print(f"  自动生成 bin/ability (使用系统 python3)")
 
     return {
         "valid": True,

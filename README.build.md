@@ -99,3 +99,19 @@ See the [complete installer and repository index](https://github.com/insightos-c
 platform locks and end-to-end validation. Local build commands do not publish a
 Release. Publishing requires repository write access and a new version tag;
 existing release tags/assets should not be replaced.
+
+## Windows native launcher
+
+Use an x64 Visual Studio 2022 developer terminal (C++ tools and Windows SDK):
+
+```powershell
+cl /std:c++20 /EHsc /MT /O2 native/windows/ability.cpp /Fe:ability.exe /link shell32.lib
+python native/windows/test_launcher.py ability.exe
+$env:SEMANTIC_WINDOWS_ABILITY_LAUNCHER = (Resolve-Path ability.exe).Path
+```
+
+The CI recipe is [windows-launcher.yml](.github/workflows/windows-launcher.yml).
+It builds a launcher with static MSVC runtime and tests Unicode/space paths,
+quoted JSON arguments, exit status forwarding, and Python child cleanup after
+launcher termination. The generated Python package remains platform independent;
+the native executable is distributed separately as a Windows Actions artifact.
