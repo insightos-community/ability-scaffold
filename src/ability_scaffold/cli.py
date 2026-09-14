@@ -25,6 +25,12 @@ import sys
 
 
 def main():
+    if sys.platform == "win32":
+        # Redirected Windows output otherwise inherits an ANSI code page that
+        # cannot encode the CLI's Chinese messages or Unicode project paths.
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8")
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         print("usage: ability-scaffold <command> [args...]")
         print()

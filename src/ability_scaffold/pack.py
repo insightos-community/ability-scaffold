@@ -149,6 +149,10 @@ def pack(project_dir: Path, output_path: Path) -> Path:
 
 
 def main():
+    if os.name == "nt":
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(
         description="能力包打包工具 - 将能力工程打包为可导入的 zip 包"
     )
