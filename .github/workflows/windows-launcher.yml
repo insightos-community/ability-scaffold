@@ -21,6 +21,14 @@ jobs:
         run: cl /nologo /std:c++20 /EHsc /MT /O2 /utf-8 native/windows/ability.cpp /Fe:ability.exe /link shell32.lib
       - name: Test real Windows Python child lifecycle
         run: python native/windows/test_launcher.py ability.exe
+      - name: Install wheel and test native package creation
+        run: |
+          python -m pip wheel --no-deps . -w dist
+          if ($LASTEXITCODE -ne 0) { throw 'Wheel build failed' }
+          python -m pip install (Get-ChildItem dist/*.whl).FullName 'PyYAML==6.0.2'
+          if ($LASTEXITCODE -ne 0) { throw 'Wheel install failed' }
+          python native/windows/test_pack.py ability.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Native package test failed' }
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ability-launcher-windows-amd64
