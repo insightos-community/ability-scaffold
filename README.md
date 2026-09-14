@@ -50,3 +50,18 @@ Copyright 2026 InsightOS. First-party code: [Apache-2.0](LICENSE). See [NOTICE](
 ## Reproducible platform builds
 
 See [glibc, musl and macOS build instructions](README.build.md) for pinned source revisions, exact scripts, tool requirements, local commands, CI reproduction and platform support boundaries.
+
+## Native Windows Ability entry
+
+The Windows launcher source is `native/windows/ability.cpp`. Build using an x64
+MSVC developer prompt with `cl /std:c++20 /EHsc /MT /O2 native/windows/ability.cpp
+/Fe:ability.exe /link shell32.lib`, or download the verified Actions artifact.
+Run `python native/windows/test_launcher.py ability.exe` to check Unicode/space
+paths, JSON argument forwarding, child exit status and parent-death cleanup.
+
+For packaging on Windows, set `SEMANTIC_WINDOWS_ABILITY_LAUNCHER` to this executable.
+The packer copies it into `bin/ability.exe`; the installed runtime sets
+`SEMANTIC_ABILITY_PYTHON` to its bundled Python. No Bash or host Python is used by
+the launcher. It assigns Python to its job at process creation and cleans up that
+child tree if the launcher dies. Robot safety decisions remain in the supervisor
+and Ability lifecycle protocol.
