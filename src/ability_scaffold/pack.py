@@ -79,7 +79,7 @@ def validate_project(project_dir: Path) -> dict:
     if errors:
         return {"valid": False, "errors": errors}
 
-    with open(package_yaml, "r") as f:
+    with open(package_yaml, "r", encoding="utf-8") as f:
         pkg = yaml.safe_load(f)
 
     name = pkg.get("name", "unknown")
@@ -136,11 +136,13 @@ def pack(project_dir: Path, output_path: Path) -> Path:
                 file_path = root_path / f
                 if should_exclude(file_path, project_dir):
                     continue
-                arcname = file_path.relative_to(project_dir)
+                # ZIP names always use POSIX separators, including on Windows.
+                # getinfo() must use the same normalized name as write().
+                arcname = file_path.relative_to(project_dir).as_posix()
                 zf.write(file_path, arcname)
                 # 保持可执行权限信息
                 if os.access(file_path, os.X_OK):
-                    info = zf.getinfo(str(arcname))
+                    info = zf.getinfo(arcname)
                     info.external_attr = 0o755 << 16
 
     return output_path
